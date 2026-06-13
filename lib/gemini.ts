@@ -37,7 +37,7 @@ export async function simulateJournalAnalysis(
 
   const exam = profile.examType.toUpperCase();
   const stressLevelWord = stress > 7 ? 'critical' : stress > 4 ? 'moderate' : 'low';
-  
+
   // Custom mock response tailored to their input text and profile details
   const triggers: string[] = [];
   if (text.toLowerCase().includes('chemistry') || text.toLowerCase().includes('chem')) {
@@ -55,7 +55,7 @@ export async function simulateJournalAnalysis(
   if (text.toLowerCase().includes('sleep') || text.toLowerCase().includes('tired')) {
     triggers.push('Irregular sleep cycles and burnout fatigue');
   }
-  
+
   if (image) {
     triggers.push('Image source trigger: revision logs / syllabus checklist analysis');
   }
@@ -103,13 +103,13 @@ export async function analyzeJournalEntry(
   profile: StudentProfile
 ): Promise<JournalAnalysis> {
   const genAI = getGeminiClient();
-  
+
   if (!genAI) {
     return simulateJournalAnalysis(entry.journalText, entry.mood, entry.stressLevel, profile, entry.image);
   }
 
   try {
-    const model = genAI.getGenerativeModel({ 
+    const model = genAI.getGenerativeModel({
       model: "gemini-3.1-flash-lite",
       generationConfig: { responseMimeType: "application/json" }
     });
@@ -159,7 +159,7 @@ export async function analyzeJournalEntry(
 
     // Construct content parts for multimodal request
     const contentParts: any[] = [prompt];
-    
+
     if (entry.image) {
       contentParts.push({
         inlineData: {
@@ -187,13 +187,13 @@ export async function getChatResponse(
   image?: { data: string; mimeType: string }
 ): Promise<string> {
   const genAI = getGeminiClient();
-  
+
   if (!genAI) {
     // Simulated friendly chatbot responses
     await delay(1000);
     const msgLower = message.toLowerCase();
     const exam = profile.examType.toUpperCase();
-    
+
     if (image) {
       return `[SIMULATION Mode: Analyzed attached ${image.mimeType} image] I see the details in this document, ${profile.name}. It looks like there's a heavy academic workload or mock test scores sheet. Don't let these single numbers define your self-worth. Let's break down this revision checklist topic-by-topic.`;
     }
@@ -206,47 +206,50 @@ export async function getChatResponse(
     if (msgLower.includes('backlog') || msgLower.includes(' syllabus') || msgLower.includes('study') || msgLower.includes('revision')) {
       return `Backlogs are the number one source of stress for ${exam} aspirants. Try setting aside just one 'Revision Hour' early in the morning before starting your daily schedule. This prevents backlog anxiety from consuming your entire day. Which topic is giving you trouble right now?`;
     }
-    
+
     return `I hear you, ${profile.name}. Preparing for ${exam} is as much a mental marathon as an academic one. Be proud of the effort you've put in today. How about we design a micro-schedule or run through a quick 2-minute grounding exercise to clear your head?`;
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-3.5-live" });
+    // gemini-3.1-flash-lite supports generateContent + startChat (unlike the Live audio model)
+    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
 
     // Format recent journals for context
-    const recentJournalSummary = recentEntries.slice(0, 3).map(e => 
+    const recentJournalSummary = recentEntries.slice(0, 3).map(e =>
       `Date: ${new Date(e.timestamp).toLocaleDateString()}, Mood: ${e.mood}/10, Stress: ${e.stressLevel}/10, Text: "${e.journalText}"`
     ).join('\n');
 
-    const chatContext = `
-      You are "Serenity", a warm, deeply empathetic AI wellness companion for students preparing for highly competitive exams.
-      You are speaking with ${profile.name}, who is preparing for the ${profile.examType} exam in ${profile.targetYear}.
-      The current baseline stress they logged is ${profile.currentStressLevel}/10.
-      
-      Here is the summary of their recent journal logs to help you stay context-aware:
-      ${recentJournalSummary || 'No journal entries logged yet.'}
-      
-      Rules:
-      1. Be warm, supportive, and use gentle language. Act like a wise mentor who cares about their mental health, not just scores.
-      2. Frame recommendations around exam-specific stress triggers (e.g. syllabus backlogs, negative mock test feedback, fatigue from sitting all day, parental pressure, self-doubt).
-      3. Keep responses conversational and concise (2-4 sentences max per response so it feels like a real chat).
-      4. Avoid sounding generic. Mention their target exam (${profile.examType}) and name (${profile.name}) naturally.
-      5. If an image is attached, inspect the image contents (notes, mock result sheet, backlog timetable) and give specific empathetic feedback on it.
-      6. Never diagnose clinical conditions; if they seem extremely distressed, encourage professional support.
-    `;
+    const systemPrompt = `You are "Serenity", a warm, deeply empathetic AI wellness companion for students preparing for highly competitive exams.
+You are speaking with ${profile.name}, who is preparing for the ${profile.examType} exam in ${profile.targetYear}.
+The current baseline stress they logged is ${profile.currentStressLevel}/10.
+
+Here is the summary of their recent journal logs to help you stay context-aware:
+${recentJournalSummary || 'No journal entries logged yet.'}
+
+Rules:
+1. Be warm, supportive, and use gentle language. Act like a wise mentor who cares about their mental health, not just scores.
+2. Frame recommendations around exam-specific stress triggers (e.g. syllabus backlogs, negative mock test feedback, fatigue from sitting all day, parental pressure, self-doubt).
+3. Keep responses conversational and concise (2-4 sentences max per response so it feels like a real chat).
+4. Avoid sounding generic — vary your responses based on the student's exact words. Never give the same response twice.
+5. Mention their target exam (${profile.examType}) and name (${profile.name}) naturally within your reply.
+6. If an image is attached, describe what you observe and give specific empathetic feedback on it.
+7. Never diagnose clinical conditions; if they seem extremely distressed, gently encourage professional support.`;
 
     const chat = model.startChat({
       history: [
-        { role: 'user', parts: [{ text: chatContext }] },
-        { role: 'model', parts: [{ text: `Understood. I am Serenity, ${profile.name}'s mental wellness companion. I will support them through their ${profile.examType} journey with empathy and actionable advice.` }] },
+        { role: 'user', parts: [{ text: systemPrompt }] },
+        {
+          role: 'model',
+          parts: [{ text: `Understood. I am Serenity, ready to support ${profile.name} through their ${profile.examType} journey with genuine empathy and personalised advice.` }]
+        },
         ...history.map(h => ({
-          role: h.role,
+          role: h.role as 'user' | 'model',
           parts: [{ text: h.content }]
         }))
       ]
     });
 
-    const userParts: any[] = [message];
+    const userParts: any[] = [{ text: message }];
     if (image) {
       userParts.push({
         inlineData: {
@@ -259,8 +262,26 @@ export async function getChatResponse(
     const result = await chat.sendMessage(userParts);
     return result.response.text();
   } catch (error) {
-    console.error("Gemini Chat API error, falling back to mock response:", error);
-    return `I'm here for you, ${profile.name}. Competitive prep is tough, but your mental health is always priority number one. What specific topic or thought is causing you stress right now? Let's break it down together.`;
+    console.error("Gemini Chat API error, falling back to contextual mock response:", error);
+    // Vary the fallback based on actual message content so it never feels identical
+    const msgLower = message.toLowerCase();
+    const exam = profile.examType.toUpperCase();
+    if (msgLower.includes('stress') || msgLower.includes('anxious') || msgLower.includes('worried')) {
+      return `Feeling that pressure is natural, ${profile.name} — ${exam} is one of the most demanding exams out there. Try breaking today into just two or three focused 45-minute blocks and let go of the rest for now. You're doing more than you realise.`;
+    }
+    if (msgLower.includes('sleep') || msgLower.includes('tired') || msgLower.includes('exhausted')) {
+      return `Sleep deprivation is one of the silent killers of exam performance, ${profile.name}. Even a 20-minute power nap can restore focus better than another hour of tired reading. Prioritise rest tonight — your brain consolidates learning while you sleep.`;
+    }
+    if (msgLower.includes('backlog') || msgLower.includes('syllabus') || msgLower.includes('behind')) {
+      return `Backlogs can feel like a mountain, but they're really just a series of small hills, ${profile.name}. Pick the single highest-yield topic in your ${exam} syllabus and spend just 30 focused minutes on it today. Progress beats perfection every time.`;
+    }
+    if (msgLower.includes('mock') || msgLower.includes('test') || msgLower.includes('score')) {
+      return `One mock score doesn't define your ${exam} outcome, ${profile.name}. Treat it as a diagnostic tool — identify the top three weak areas and spend targeted time there this week. Consistent improvement is the real goal.`;
+    }
+    if (msgLower.includes('hello') || msgLower.includes('hi') || msgLower.includes('hey')) {
+      return `Hello ${profile.name}! I'm Serenity, your wellness companion for the ${exam} journey. How are you feeling today — are you in a study groove, or is something weighing on your mind?`;
+    }
+    return `I hear you, ${profile.name}. Whatever you're going through with your ${exam} prep, remember that your mental health comes first. Tell me more about what's on your mind — I'm here to help you find a path forward.`;
   }
 }
 
@@ -296,13 +317,11 @@ export async function getMeditationSpeech(
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-3.5-live" });
-    const prompt = `
-      You are "Serenity", an empathetic student wellness meditation coach.
-      Create exactly one short, soothing, and relaxing sentence (maximum 12 words) guiding ${profile.name} who is preparing for the ${profile.examType} competitive exam (current stress: ${stressLevel}/10).
-      The student is in the breathing phase: "${phase}" (Inhale, Hold, or Exhale).
-      Keep it personal, use their name ${profile.name} and address academic stress or exam tension naturally. Do not include quotes or formatting.
-    `;
+    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
+    const prompt = `You are "Serenity", an empathetic student wellness meditation coach.
+Create exactly one short, soothing, and relaxing sentence (maximum 12 words) guiding ${profile.name} who is preparing for the ${profile.examType} competitive exam (current stress: ${stressLevel}/10).
+The student is in the breathing phase: "${phase}" (Inhale, Hold, or Exhale).
+Keep it personal, use their name ${profile.name} and address academic stress or exam tension naturally. Do not include quotes or extra formatting — just the sentence itself.`;
     const result = await model.generateContent(prompt);
     return result.response.text().trim();
   } catch (error) {

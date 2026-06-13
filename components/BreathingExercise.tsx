@@ -15,6 +15,7 @@ export default function BreathingExercise() {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const totalTimerRef = useRef<NodeJS.Timeout | null>(null);
   const speechUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // 4-7-8 Breathing Cycle parameters
   const CYCLE_DURATIONS = {
@@ -27,15 +28,21 @@ export default function BreathingExercise() {
     setProfile(getProfile());
   }, []);
 
-  // Handle Speech Guidance on phase change
+  // Handle Speech/Audio Guidance on phase change
   useEffect(() => {
     if (!isActive || !voiceEnabled || !profile) return;
 
     const triggerVoiceGuidance = async () => {
       try {
-        // Cancel any ongoing speech first
+        // Cancel any ongoing browser SpeechSynthesis
         if (typeof window !== 'undefined' && window.speechSynthesis) {
           window.speechSynthesis.cancel();
+        }
+
+        // Cancel/pause any ongoing live model audio playback
+        if (currentAudioRef.current) {
+          currentAudioRef.current.pause();
+          currentAudioRef.current = null;
         }
 
         const response = await fetch('/api/meditate', {
@@ -50,23 +57,38 @@ export default function BreathingExercise() {
 
         if (response.ok) {
           const data = await response.json();
-          if (data.text && typeof window !== 'undefined' && window.speechSynthesis) {
-            const utterance = new SpeechSynthesisUtterance(data.text);
-            
-            // Try to find a calming, slow voice
-            const voices = window.speechSynthesis.getVoices();
-            const softVoice = voices.find(v => v.name.includes('Google US English') || v.lang.startsWith('en-US')) || voices[0];
-            if (softVoice) utterance.voice = softVoice;
-            
-            utterance.rate = 0.85; // Calming, slightly slower rate
-            utterance.pitch = 1.0;
-            
-            speechUtteranceRef.current = utterance;
-            window.speechSynthesis.speak(utterance);
+          
+          // 1. Play real Gemini audio output if available
+          if (data.audioData && data.mimeType) {
+            const audioUrl = `data:${data.mimeType};base64,${data.audioData}`;
+            const audio = new Audio(audioUrl);
+            currentAudioRef.current = audio;
+            audio.play().catch(e => {
+              console.warn("Audio play blocked by browser autoplay policy, fallback to TTS:", e);
+              // Fallback to text-to-speech if autoplay is blocked
+              fallbackTTS(data.text);
+            });
+          } 
+          // 2. Otherwise fall back to browser-synthesized SpeechSynthesis
+          else if (data.text) {
+            fallbackTTS(data.text);
           }
         }
       } catch (err) {
         console.warn("Failed to generate voice guidance:", err);
+      }
+    };
+
+    const fallbackTTS = (text: string) => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        const voices = window.speechSynthesis.getVoices();
+        const softVoice = voices.find(v => v.name.includes('Google US English') || v.lang.startsWith('en-US')) || voices[0];
+        if (softVoice) utterance.voice = softVoice;
+        utterance.rate = 0.85; // slightly slower for relaxation
+        utterance.pitch = 1.0;
+        speechUtteranceRef.current = utterance;
+        window.speechSynthesis.speak(utterance);
       }
     };
 
@@ -122,12 +144,20 @@ export default function BreathingExercise() {
   const handleStartPause = () => {
     setIsActive(!isActive);
     
-    // Resume speech context if paused
+    // Resume/pause speech and audio context
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       if (!isActive) {
         window.speechSynthesis.resume();
       } else {
         window.speechSynthesis.pause();
+      }
+    }
+
+    if (currentAudioRef.current) {
+      if (!isActive) {
+        currentAudioRef.current.play().catch(() => {});
+      } else {
+        currentAudioRef.current.pause();
       }
     }
   };
@@ -141,12 +171,23 @@ export default function BreathingExercise() {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
+
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
   };
 
   const toggleVoice = () => {
     setVoiceEnabled(!voiceEnabled);
-    if (voiceEnabled && typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
+    if (voiceEnabled) {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        currentAudioRef.current = null;
+      }
     }
   };
 

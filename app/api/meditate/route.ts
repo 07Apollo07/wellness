@@ -13,9 +13,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const speechText = await getMeditationSpeech(profile, stressLevel || 5, phase);
+    const result = await getMeditationSpeech(profile, stressLevel || 5, phase);
 
-    return NextResponse.json({ text: speechText });
+    return NextResponse.json(result);
   } catch (error: any) {
     console.error('Error in meditate API route:', error);
     return NextResponse.json(
