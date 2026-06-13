@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getProfile, getEntries, saveEntry, StudentProfile, JournalEntry, JournalAnalysis } from '@/lib/storage';
 import MoodSelector from '@/components/MoodSelector';
-import { Sparkles, Brain, ArrowRight, CheckCircle2, BedDouble, Target, Calendar, ClipboardList, PenTool } from 'lucide-react';
+import { Sparkles, Brain, ArrowRight, CheckCircle2, BedDouble, Target, Calendar, ClipboardList, PenTool, Image as ImageIcon } from 'lucide-react';
 
 export default function JournalPage() {
   const router = useRouter();
@@ -18,6 +18,10 @@ export default function JournalPage() {
   const [stressLevel, setStressLevel] = useState(5);
   const [sleepQuality, setSleepQuality] = useState(6);
   const [focusQuality, setFocusQuality] = useState(6);
+
+  // Multimodal Image States
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   // Analysis / UI states
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -33,6 +37,20 @@ export default function JournalPage() {
       setProfile(p);
       setPastEntries(getEntries());
       setLoaded(true);
+
+      // Check for auto-journaling prefill logs from completed Pomodoro study sessions
+      try {
+        const pendingLogs = localStorage.getItem('serenity_temp_pomodoro_logs');
+        if (pendingLogs) {
+          setJournalText(prev => {
+            const sep = prev.trim() ? '\n\n' : '';
+            return prev + sep + "Focus Log:" + pendingLogs;
+          });
+          localStorage.removeItem('serenity_temp_pomodoro_logs'); // Clear so it only imports once
+        }
+      } catch (e) {
+        console.warn("Failed to retrieve Pomodoro logs:", e);
+      }
     }
   }, [router]);
 
@@ -62,6 +80,42 @@ export default function JournalPage() {
     }
   }, [isAnalyzing]);
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 4 * 1024 * 1024) {
+        alert("Image is too large. Please select an image smaller than 4MB.");
+        return;
+      }
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
+  const convertBase64 = (file: File): Promise<{ data: string; mimeType: string }> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        const parts = result.split(',');
+        const mimeType = parts[0].match(/:(.*?);/)?.[1] || file.type;
+        const data = parts[1];
+        resolve({ data, mimeType });
+      };
+      reader.onerror = error => reject(error);
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!journalText.trim() || !profile) return;
@@ -69,15 +123,21 @@ export default function JournalPage() {
     setIsAnalyzing(true);
     setCurrentAnalysis(null);
 
-    const entryData = {
-      journalText: journalText.trim(),
-      mood,
-      stressLevel,
-      sleepQuality,
-      focusQuality,
-    };
-
     try {
+      let imagePayload = undefined;
+      if (imageFile) {
+        imagePayload = await convertBase64(imageFile);
+      }
+
+      const entryData = {
+        journalText: journalText.trim(),
+        mood,
+        stressLevel,
+        sleepQuality,
+        focusQuality,
+        image: imagePayload,
+      };
+
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -109,6 +169,7 @@ export default function JournalPage() {
       setStressLevel(5);
       setSleepQuality(6);
       setFocusQuality(6);
+      handleRemoveImage();
     } catch (error) {
       console.error(error);
       alert('Analysis encountered an issue. Mock evaluation has been triggered instead.');
@@ -260,6 +321,41 @@ export default function JournalPage() {
             {/* Mood selector component */}
             <MoodSelector value={mood} onChange={setMood} />
 
+            {/* Image Upload Row */}
+            <div className="border-t border-white/5 pt-5">
+              <span className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <ImageIcon className="h-4 w-4 text-[#7ec8a4]" />
+                Attach notes, mock results, or backlog sheets (Optional)
+              </span>
+              <div className="flex items-center gap-4">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                  id="journal-image-upload"
+                />
+                <label
+                  htmlFor="journal-image-upload"
+                  className="px-4 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-xs font-bold text-slate-300 cursor-pointer transition-all"
+                >
+                  Choose Image
+                </label>
+                {imagePreview && (
+                  <div className="relative h-14 w-14 border border-white/10 rounded-lg overflow-hidden shrink-0 group">
+                    <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="absolute inset-0 bg-black/70 flex items-center justify-center text-red-400 hover:text-red-300 text-[9px] font-black opacity-100 transition-opacity"
+                    >
+                      REMOVE
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Slider parameters grid */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 border-t border-white/5 pt-5">
               {/* Stress Level */}
@@ -368,6 +464,13 @@ export default function JournalPage() {
                     <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">
                       {item.journalText}
                     </p>
+                    
+                    {item.image && (
+                      <span className="text-[9px] text-[#b8a9d9] font-bold">
+                        📎 Contains Attached Image
+                      </span>
+                    )}
+
                     {item.analysis && (
                       <span className="text-[9px] text-[#7ec8a4] font-bold mt-1 group-hover:underline">
                         → Tone: {item.analysis.emotionalTone} (Review Analysis)

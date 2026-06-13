@@ -1,16 +1,20 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, Wind } from 'lucide-react';
+import { Play, Pause, RotateCcw, Wind, Volume2, VolumeX } from 'lucide-react';
+import { getProfile, StudentProfile } from '@/lib/storage';
 
 export default function BreathingExercise() {
   const [isActive, setIsActive] = useState(false);
   const [phase, setPhase] = useState<'In' | 'Hold' | 'Out'>('In');
   const [phaseSeconds, setPhaseSeconds] = useState(4);
   const [totalSeconds, setTotalSeconds] = useState(300); // 5 minutes standard session
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [profile, setProfile] = useState<StudentProfile | null>(null);
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const totalTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const speechUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   // 4-7-8 Breathing Cycle parameters
   const CYCLE_DURATIONS = {
@@ -18,6 +22,56 @@ export default function BreathingExercise() {
     Hold: 7,
     Out: 8
   };
+
+  useEffect(() => {
+    setProfile(getProfile());
+  }, []);
+
+  // Handle Speech Guidance on phase change
+  useEffect(() => {
+    if (!isActive || !voiceEnabled || !profile) return;
+
+    const triggerVoiceGuidance = async () => {
+      try {
+        // Cancel any ongoing speech first
+        if (typeof window !== 'undefined' && window.speechSynthesis) {
+          window.speechSynthesis.cancel();
+        }
+
+        const response = await fetch('/api/meditate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            profile,
+            stressLevel: profile.currentStressLevel,
+            phase
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.text && typeof window !== 'undefined' && window.speechSynthesis) {
+            const utterance = new SpeechSynthesisUtterance(data.text);
+            
+            // Try to find a calming, slow voice
+            const voices = window.speechSynthesis.getVoices();
+            const softVoice = voices.find(v => v.name.includes('Google US English') || v.lang.startsWith('en-US')) || voices[0];
+            if (softVoice) utterance.voice = softVoice;
+            
+            utterance.rate = 0.85; // Calming, slightly slower rate
+            utterance.pitch = 1.0;
+            
+            speechUtteranceRef.current = utterance;
+            window.speechSynthesis.speak(utterance);
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to generate voice guidance:", err);
+      }
+    };
+
+    triggerVoiceGuidance();
+  }, [phase, isActive, voiceEnabled, profile]);
 
   useEffect(() => {
     if (isActive && totalSeconds > 0) {
@@ -49,7 +103,7 @@ export default function BreathingExercise() {
                 return 'In';
               }
             });
-            return 0; // Temp placeholder replaced by next phase duration
+            return 0;
           }
           return prev - 1;
         });
@@ -67,6 +121,15 @@ export default function BreathingExercise() {
 
   const handleStartPause = () => {
     setIsActive(!isActive);
+    
+    // Resume speech context if paused
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      if (!isActive) {
+        window.speechSynthesis.resume();
+      } else {
+        window.speechSynthesis.pause();
+      }
+    }
   };
 
   const handleReset = () => {
@@ -74,6 +137,17 @@ export default function BreathingExercise() {
     setPhase('In');
     setPhaseSeconds(4);
     setTotalSeconds(300);
+    
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+  };
+
+  const toggleVoice = () => {
+    setVoiceEnabled(!voiceEnabled);
+    if (voiceEnabled && typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
   };
 
   // Format MM:SS
@@ -109,9 +183,34 @@ export default function BreathingExercise() {
       {/* Wave decor backgrounds */}
       <div className="absolute inset-0 bg-radial-gradient(circle, rgba(126,200,164,0.02) 0%, transparent 60%) pointer-events-none" />
 
-      <div className="flex items-center gap-2 mb-4">
-        <Wind className="h-5 w-5 text-[#7ec8a4]" />
-        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Serenity Breathing</h3>
+      <div className="flex items-center justify-between w-full mb-4">
+        <div className="flex items-center gap-2">
+          <Wind className="h-5 w-5 text-[#7ec8a4]" />
+          <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Serenity Breathing</h3>
+        </div>
+
+        {/* Voice Toggle */}
+        <button
+          onClick={toggleVoice}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-bold transition-all cursor-pointer ${
+            voiceEnabled 
+              ? 'border-[#7ec8a4] bg-[#7ec8a4]/15 text-[#7ec8a4]'
+              : 'border-white/5 bg-white/5 text-slate-400 hover:text-white'
+          }`}
+          aria-label={voiceEnabled ? 'Disable Serenity voice guidance' : 'Enable Serenity voice guidance'}
+        >
+          {voiceEnabled ? (
+            <>
+              <Volume2 className="h-3.5 w-3.5" />
+              <span>Voice Live</span>
+            </>
+          ) : (
+            <>
+              <VolumeX className="h-3.5 w-3.5" />
+              <span>Voice Off</span>
+            </>
+          )}
+        </button>
       </div>
 
       <p className="text-2xl font-extrabold text-white tracking-tight tabular-nums mb-6">
@@ -124,7 +223,12 @@ export default function BreathingExercise() {
         <div className={`absolute inset-0 rounded-full border border-white/5 transition-all duration-[1000ms] ${isActive ? 'scale-120 opacity-30 animate-ping' : 'scale-100 opacity-0'}`} />
         
         {/* Breathing Orb */}
-        <div className={`h-48 w-48 rounded-full flex flex-col items-center justify-center transition-all ease-in-out border border-white/10 shadow-2xl ${scaleClass}`}>
+        <div 
+          className={`h-48 w-48 rounded-full flex flex-col items-center justify-center transition-all ease-in-out border border-white/10 shadow-2xl ${scaleClass}`}
+          role="timer"
+          aria-live="polite"
+          aria-label={`${instruction}, remaining phase time ${phaseSeconds} seconds`}
+        >
           <p className="text-xl font-black text-white uppercase tracking-wider transition-all duration-300">
             {isActive ? instruction : 'Serenity'}
           </p>
@@ -146,6 +250,7 @@ export default function BreathingExercise() {
           onClick={handleReset}
           className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 hover:border-white/20 bg-white/5 text-slate-300 hover:text-white transition-all cursor-pointer"
           title="Reset session"
+          aria-label="Reset breathing session"
         >
           <RotateCcw className="h-4.5 w-4.5" />
         </button>
@@ -156,6 +261,7 @@ export default function BreathingExercise() {
               ? 'bg-[#b8a9d9] text-[#0a0f1e] shadow-[#b8a9d9]/20 hover:bg-[#b8a9d9]/90'
               : 'bg-[#7ec8a4] text-[#0a0f1e] shadow-[#7ec8a4]/20 hover:bg-[#7ec8a4]/90'
           }`}
+          aria-label={isActive ? 'Pause breathing exercise' : 'Start breathing exercise'}
         >
           {isActive ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 fill-current ml-0.5" />}
         </button>

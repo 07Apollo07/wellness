@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { getProfile, getChatHistory, saveChatMessage, getEntries, clearChatHistory, StudentProfile, ChatMessage, JournalEntry } from '@/lib/storage';
-import { Send, Trash2, HelpCircle, User, Sparkles, Smile, Compass } from 'lucide-react';
+import { Send, Trash2, HelpCircle, User, Sparkles, Smile, Paperclip } from 'lucide-react';
 
 const SUGGESTIONS = [
   "I am overwhelmed by my backlog.",
@@ -21,6 +21,10 @@ export default function ChatPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [loaded, setLoaded] = useState(false);
   
+  // Image Upload states inside Chat
+  const [chatImageFile, setChatImageFile] = useState<File | null>(null);
+  const [chatImagePreview, setChatImagePreview] = useState<string | null>(null);
+
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -35,44 +39,87 @@ export default function ChatPage() {
     }
   }, [router]);
 
-  // Scroll to bottom whenever messages list is updated
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  const handleSend = async (textToSend: string) => {
-    if (!textToSend.trim() || !profile) return;
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 4 * 1024 * 1024) {
+        alert("Image is too large. Please choose an image smaller than 4MB.");
+        return;
+      }
+      setChatImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setChatImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
-    // Save user message
-    const userMsg: ChatMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: textToSend,
-      timestamp: new Date().toISOString()
-    };
-    
-    const updatedHistory = saveChatMessage(userMsg);
-    setMessages(updatedHistory);
-    setInput('');
+  const handleRemoveImage = () => {
+    setChatImageFile(null);
+    setChatImagePreview(null);
+  };
+
+  const convertBase64 = (file: File): Promise<{ data: string; mimeType: string }> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        const parts = result.split(',');
+        const mimeType = parts[0].match(/:(.*?);/)?.[1] || file.type;
+        const data = parts[1];
+        resolve({ data, mimeType });
+      };
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  const handleSend = async (textToSend: string) => {
+    if ((!textToSend.trim() && !chatImageFile) || !profile) return;
+
     setIsTyping(true);
 
     try {
-      // Map to Gemini history format (removing unique ids and dates)
+      let imagePayload = undefined;
+      if (chatImageFile) {
+        imagePayload = await convertBase64(chatImageFile);
+      }
+
+      // Save user message
+      const userMsg: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'user',
+        content: textToSend || (imagePayload ? "[Attached Image]" : ""),
+        timestamp: new Date().toISOString(),
+        image: imagePayload
+      };
+      
+      const updatedHistory = saveChatMessage(userMsg);
+      setMessages(updatedHistory);
+      setInput('');
+      handleRemoveImage();
+
+      // Get API Chat Logs history map
       const apiHistory = updatedHistory.slice(-10).map(m => ({
         role: m.role,
         content: m.content
       }));
-      // Remove latest user message from history array passed because it's passed as 'message' parameter
-      apiHistory.pop();
+      apiHistory.pop(); // Remove the newly added message from history parameter
 
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: textToSend,
+          message: textToSend || "Analyze this image and provide coaching support.",
           history: apiHistory,
           profile,
-          recentEntries: recentEntries.slice(0, 3)
+          recentEntries: recentEntries.slice(0, 3),
+          image: imagePayload
         })
       });
 
@@ -94,11 +141,10 @@ export default function ChatPage() {
       setMessages(postReplyHistory);
     } catch (error) {
       console.error(error);
-      // Fallback response
       const errorMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'model',
-        content: `I'm here for you, ${profile.name}. The exam pressure is very real, but you are not alone in this. Let's focus on taking one solid step at a time today. What subject are you studying right now?`,
+        content: `I'm here for you, ${profile.name}. Preparing for competitive exams is a tough journey, but your wellness is the priority. What subject concepts are causing you stress right now? Let's take a deep breath.`,
         timestamp: new Date().toISOString()
       };
       const postErrorHistory = saveChatMessage(errorMsg);
@@ -214,12 +260,20 @@ export default function ChatPage() {
                   }`}>
                     {isUser ? <User className="h-4 w-4" /> : <Smile className="h-4 w-4" />}
                   </div>
-                  <div className={`p-4 rounded-2xl text-xs leading-relaxed ${
-                    isUser 
-                      ? 'bg-[#b8a9d9]/10 border border-[#b8a9d9]/20 text-white rounded-tr-none'
-                      : 'bg-white/3 border border-white/5 text-slate-200 rounded-tl-none'
-                  }`}>
-                    {msg.content}
+                  <div className="flex flex-col gap-1.5">
+                    <div className={`p-4 rounded-2xl text-xs leading-relaxed ${
+                      isUser 
+                        ? 'bg-[#b8a9d9]/10 border border-[#b8a9d9]/20 text-white rounded-tr-none'
+                        : 'bg-white/3 border border-white/5 text-slate-200 rounded-tl-none'
+                    }`}>
+                      {msg.content}
+                      {/* Attached image preview */}
+                      {msg.image && (
+                        <div className="mt-3.5 max-w-[200px] border border-white/10 rounded-lg overflow-hidden">
+                          <img src={`data:${msg.image.mimeType};base64,${msg.image.data}`} alt="Attached user load screenshot" className="w-full h-auto object-contain" />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -243,6 +297,25 @@ export default function ChatPage() {
           <div ref={chatEndRef} />
         </div>
 
+        {/* Image upload preview row if attached */}
+        {chatImagePreview && (
+          <div className="px-6 py-2.5 bg-white/3 border-t border-white/5 flex items-center gap-3 animate-pulse">
+            <div className="relative h-11 w-11 border border-white/10 rounded-lg overflow-hidden shrink-0">
+              <img src={chatImagePreview} alt="Preview" className="h-full w-full object-cover" />
+            </div>
+            <div className="flex-1">
+              <p className="text-[10px] text-slate-300 font-bold">Image Attached</p>
+              <p className="text-[9px] text-slate-500">{chatImageFile?.name}</p>
+            </div>
+            <button
+              onClick={handleRemoveImage}
+              className="text-[10px] font-black text-red-400 hover:text-red-300"
+            >
+              REMOVE
+            </button>
+          </div>
+        )}
+
         {/* Input box */}
         <div className="p-4 border-t border-white/5 bg-white/2">
           <form
@@ -250,8 +323,24 @@ export default function ChatPage() {
               e.preventDefault();
               handleSend(input);
             }}
-            className="flex gap-2"
+            className="flex items-center gap-2"
           >
+            {/* Paperclip Button */}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="hidden"
+              id="chat-image-upload"
+            />
+            <label
+              htmlFor="chat-image-upload"
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 border border-white/5 text-slate-400 hover:text-white cursor-pointer transition-colors"
+              title="Attach study sheet or backlog screenshot"
+            >
+              <Paperclip className="h-4.5 w-4.5" />
+            </label>
+
             <input
               type="text"
               value={input}
@@ -261,7 +350,7 @@ export default function ChatPage() {
             />
             <button
               type="submit"
-              disabled={!input.trim() || isTyping}
+              disabled={(!input.trim() && !chatImageFile) || isTyping}
               className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#7ec8a4] text-[#0a0f1e] hover:bg-[#7ec8a4]/90 disabled:opacity-50 disabled:hover:scale-100 transition-all transform hover:scale-102 shrink-0 cursor-pointer"
             >
               <Send className="h-4 w-4" />

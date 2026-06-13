@@ -21,26 +21,42 @@ interface MoodSelectorProps {
 }
 
 export default function MoodSelector({ value, onChange }: MoodSelectorProps) {
+  const handleKeyDown = (e: React.KeyboardEvent, optionVal: number) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onChange(optionVal);
+    }
+  };
+
   return (
     <div className="w-full">
-      <label className="block text-sm font-semibold text-slate-300 mb-3">
+      <label className="block text-sm font-semibold text-slate-300 mb-3" id="mood-selector-label">
         How is your mood right now?
       </label>
-      <div className="grid grid-cols-5 gap-2.5 sm:gap-4">
+      <div 
+        className="grid grid-cols-5 gap-2.5 sm:gap-4"
+        role="radiogroup"
+        aria-labelledby="mood-selector-label"
+      >
         {MOOD_OPTIONS.map((option) => {
           const isSelected = value === option.value;
           return (
             <button
               key={option.value}
               type="button"
+              role="radio"
+              aria-checked={isSelected}
+              aria-label={`${option.label}, mood level ${option.value} out of 10`}
+              tabIndex={0}
               onClick={() => onChange(option.value)}
-              className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border text-center transition-all duration-200 cursor-pointer ${
+              onKeyDown={(e) => handleKeyDown(e, option.value)}
+              className={`flex flex-col items-center justify-center p-3 sm:p-4 rounded-xl border text-center transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#7ec8a4] focus:ring-offset-2 focus:ring-offset-[#0a0f1e] ${
                 isSelected
                   ? 'border-[#7ec8a4] bg-[#7ec8a4]/10 shadow-[0_0_15px_rgba(126,200,164,0.15)] scale-105'
                   : 'border-white/5 bg-white/3 hover:border-white/20 hover:scale-102'
               }`}
             >
-              <span className="text-3xl sm:text-4xl transition-transform hover:scale-115">
+              <span className="text-3xl sm:text-4xl transition-transform hover:scale-115" aria-hidden="true">
                 {option.emoji}
               </span>
               <span className="text-[10px] sm:text-xs font-medium text-slate-300 mt-2">

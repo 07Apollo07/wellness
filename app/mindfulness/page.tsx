@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getProfile, StudentProfile } from '@/lib/storage';
 import BreathingExercise from '@/components/BreathingExercise';
-import { Wind, Compass, Sparkles, AlertCircle, Quote, Eye, Hand, AudioLines, Flame, Soup, HelpCircle, CheckCircle2 } from 'lucide-react';
+import PomodoroTimer from '@/components/PomodoroTimer';
+import { Compass, Quote, Eye, Hand, AudioLines, Flame, Soup, CheckCircle2 } from 'lucide-react';
 
 const GROUNDING_STEPS = [
   {
@@ -112,13 +113,18 @@ export default function MindfulnessPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Left: 4-7-8 Breathing Circle */}
-        <div>
-          <BreathingExercise />
+        {/* Left Column: Stacked Breathing & Pomodoro Timer */}
+        <div className="space-y-6 flex flex-col">
+          <div className="flex-1">
+            <BreathingExercise />
+          </div>
+          <div className="flex-1">
+            <PomodoroTimer />
+          </div>
         </div>
 
-        {/* Right: 5-4-3-2-1 Grounding Technique */}
-        <div className="glass-panel p-6 flex flex-col justify-between min-h-[400px]">
+        {/* Right Column: 5-4-3-2-1 Grounding Technique */}
+        <div className="glass-panel p-6 flex flex-col justify-between h-full min-h-[400px]">
           <div>
             <div className="flex items-center gap-3.5 mb-2">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#7ec8a4]/10 text-[#7ec8a4]">

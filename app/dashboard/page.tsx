@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { getProfile, getEntries, getJournalStreak, clearProfile, StudentProfile, JournalEntry } from '@/lib/storage';
-import { calculateAnalytics, AnalyticsSummary } from '@/lib/analytics';
+import { calculateAnalytics } from '@/lib/analytics';
 import ExamCountdown from '@/components/ExamCountdown';
 import BurnoutMeter from '@/components/BurnoutMeter';
 import MoodChart from '@/components/MoodChart';
-import { Flame, BrainCircuit, Calendar, RefreshCw, PenTool, Sparkles, Smile, BedDouble, Target } from 'lucide-react';
+import { Flame, BrainCircuit, Calendar, RefreshCw, PenTool, Smile, BedDouble, Target } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Dashboard() {
@@ -15,7 +15,6 @@ export default function Dashboard() {
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [streak, setStreak] = useState(0);
-  const [analytics, setAnalytics] = useState<AnalyticsSummary | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -27,10 +26,14 @@ export default function Dashboard() {
       const userEntries = getEntries();
       setEntries(userEntries);
       setStreak(getJournalStreak());
-      setAnalytics(calculateAnalytics(userEntries));
       setLoaded(true);
     }
   }, [router]);
+
+  // Caching expensive analytics processing loops
+  const analytics = useMemo(() => {
+    return calculateAnalytics(entries);
+  }, [entries]);
 
   const handleResetProfile = () => {
     if (confirm('Are you sure you want to reset your profile? This will clear all local wellness logs and history.')) {

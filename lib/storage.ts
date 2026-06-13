@@ -32,6 +32,7 @@ export interface JournalEntry {
   sleepQuality: number; // 1-10
   focusQuality: number; // 1-10
   analysis?: JournalAnalysis;
+  image?: { data: string; mimeType: string };
 }
 
 export interface ChatMessage {
@@ -39,6 +40,7 @@ export interface ChatMessage {
   role: 'user' | 'model';
   content: string;
   timestamp: string;
+  image?: { data: string; mimeType: string };
 }
 
 const KEYS = {
