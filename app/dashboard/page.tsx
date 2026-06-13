@@ -2,11 +2,13 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { getProfile, getEntries, getJournalStreak, clearProfile, StudentProfile, JournalEntry } from '@/lib/storage';
+import { getProfile, getEntries, getJournalStreak, clearProfile, StudentProfile, JournalEntry, getBurnoutHistory } from '@/lib/storage';
 import { calculateAnalytics } from '@/lib/analytics';
 import ExamCountdown from '@/components/ExamCountdown';
 import BurnoutMeter from '@/components/BurnoutMeter';
 import MoodChart from '@/components/MoodChart';
+import BurnoutTrend from '@/components/BurnoutTrend';
+import ExportImportControls from '@/components/ExportImportControls';
 import { Flame, BrainCircuit, Calendar, RefreshCw, PenTool, Smile, BedDouble, Target } from 'lucide-react';
 import Link from 'next/link';
 
@@ -147,6 +149,11 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Burnout Trend over time */}
+      <div className="mt-6">
+        <BurnoutTrend data={getBurnoutHistory()} />
+      </div>
+
       {/* Advanced Analysis Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Wordcloud/Trigger Cloud list */}
@@ -236,6 +243,9 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Export / Import Controls */}
+      <ExportImportControls />
 
       {/* Delete / Reset profile Section */}
       <div className="flex justify-center pt-8 border-t border-white/5">

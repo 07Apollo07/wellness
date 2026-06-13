@@ -47,6 +47,7 @@ const KEYS = {
   PROFILE: 'serenity_profile',
   ENTRIES: 'serenity_entries',
   CHAT: 'serenity_chat_history',
+  BURNOUT_HISTORY: 'serenity_burnout_history',
 };
 
 // Safe wrapper around localStorage access
@@ -103,6 +104,72 @@ export function clearProfile(): void {
   safeRemoveItem(KEYS.CHAT);
 }
 
+/**
+ * Simple encryption placeholder – base64 encode the JSON string.
+ * In a real app you would use a proper crypto library and a user‑provided passphrase.
+ */
+/**
+ * Encode a UTF‑8 string to Base64 safely (handles emojis and other non‑Latin1 chars).
+ * Uses the browser's TextEncoder/TextDecoder which are widely supported.
+ */
+function encrypt(data: string): string {
+  try {
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(data);
+    let binary = '';
+    bytes.forEach(b => (binary += String.fromCharCode(b)));
+    return btoa(binary);
+  } catch (e) {
+    console.error('Encryption failed:', e);
+    return '';
+  }
+}
+
+/**
+ * Decode a Base64 string that was produced by the `encrypt` function above.
+ * Returns an empty string on failure.
+ */
+function decrypt(data: string): string {
+  try {
+    const binary = atob(data);
+    const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+    const decoder = new TextDecoder();
+    return decoder.decode(bytes);
+  } catch (e) {
+    console.warn('Failed to decode imported data:', e);
+    return '';
+  }
+}
+
+/** Export the current profile, journal entries and chat history as an encrypted JSON string.
+ *  Returns the string so the caller can trigger a download.
+ */
+export function exportData(): string {
+  const payload = {
+    profile: getProfile(),
+    entries: getEntries(),
+    chat: getChatHistory(),
+  };
+  const json = JSON.stringify(payload);
+  return encrypt(json);
+}
+
+/** Import encrypted JSON (produced by `exportData`).
+ *  Overwrites the current local storage with the imported data.
+ */
+export function importData(encrypted: string): void {
+  const decoded = decrypt(encrypted);
+  if (!decoded) return;
+  try {
+    const data = JSON.parse(decoded);
+    if (data.profile) safeSetItem(KEYS.PROFILE, JSON.stringify(data.profile));
+    if (data.entries) safeSetItem(KEYS.ENTRIES, JSON.stringify(data.entries));
+    if (data.chat) safeSetItem(KEYS.CHAT, JSON.stringify(data.chat));
+  } catch (e) {
+    console.error('Failed to import data:', e);
+  }
+}
+
 export function getEntries(): JournalEntry[] {
   const data = safeGetItem(KEYS.ENTRIES);
   if (!data) return [];
@@ -121,6 +188,10 @@ export function saveEntry(entry: JournalEntry): JournalEntry[] {
     safeSetItem(KEYS.ENTRIES, JSON.stringify(entries));
   } catch (e) {
     console.error("Failed to save entries:", e);
+  }
+  // If the entry includes analysis with a burnout risk score, persist it for trend tracking.
+  if (entry.analysis && typeof entry.analysis.burnoutRiskScore === 'number') {
+    addBurnoutScore(entry.analysis.burnoutRiskScore);
   }
   return entries;
 }
@@ -149,6 +220,32 @@ export function saveChatMessage(message: ChatMessage): ChatMessage[] {
 
 export function clearChatHistory(): void {
   safeRemoveItem(KEYS.CHAT);
+}
+
+/** Retrieve stored burnout score history (array of {date, score}). */
+export function getBurnoutHistory(): { date: string; score: number }[] {
+  const data = safeGetItem(KEYS.BURNOUT_HISTORY);
+  if (!data) return [];
+  try {
+    return JSON.parse(data);
+  } catch (e) {
+    console.error('Failed to parse burnout history JSON:', e);
+    return [];
+  }
+}
+
+/** Append a new burnout score for today to the history. */
+export function addBurnoutScore(score: number): void {
+  const history = getBurnoutHistory();
+  const today = new Date();
+  const date = `${today.getMonth() + 1}/${today.getDate()}`;
+  const newEntry = { date, score };
+  const updated = [newEntry, ...history].slice(0, 30); // keep recent 30
+  try {
+    safeSetItem(KEYS.BURNOUT_HISTORY, JSON.stringify(updated));
+  } catch (e) {
+    console.error('Failed to store burnout history:', e);
+  }
 }
 
 // Calculate journaling streak

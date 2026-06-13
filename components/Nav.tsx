@@ -30,6 +30,7 @@ export default function Nav() {
     { href: '/journal', label: 'Daily Journal', icon: PenTool },
     { href: '/chat', label: 'Companion Chat', icon: MessageSquare },
     { href: '/mindfulness', label: 'Mindfulness', icon: Compass },
+    { href: '/weekly-summary', label: 'Weekly Summary', icon: Compass },
   ];
 
   return (
