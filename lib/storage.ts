@@ -1,7 +1,7 @@
 // Storage helpers using localStorage
 // Client-safe check since Next.js uses server rendering
-
-const IS_CLIENT = typeof window !== 'undefined';
+// NOTE: Checked lazily inside each helper so test environments that
+// set global.window after module load still work correctly.
 
 export interface StudentProfile {
   name: string;
@@ -51,7 +51,7 @@ const KEYS = {
 
 // Safe wrapper around localStorage access
 function safeGetItem(key: string): string | null {
-  if (!IS_CLIENT) return null;
+  if (typeof window === 'undefined') return null;
   try {
     return localStorage.getItem(key);
   } catch (e) {
@@ -61,7 +61,7 @@ function safeGetItem(key: string): string | null {
 }
 
 function safeSetItem(key: string, value: string): void {
-  if (!IS_CLIENT) return;
+  if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(key, value);
   } catch (e) {
@@ -70,7 +70,7 @@ function safeSetItem(key: string, value: string): void {
 }
 
 function safeRemoveItem(key: string): void {
-  if (!IS_CLIENT) return;
+  if (typeof window === 'undefined') return;
   try {
     localStorage.removeItem(key);
   } catch (e) {

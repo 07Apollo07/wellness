@@ -226,7 +226,7 @@ export default function BreathingExercise() {
 
       <div className="flex items-center justify-between w-full mb-4">
         <div className="flex items-center gap-2">
-          <Wind className="h-5 w-5 text-[#7ec8a4]" />
+          <Wind className="h-5 w-5 text-[#7ec8a4]" aria-label="wind icon" />
           <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Serenity Breathing</h3>
         </div>
 
@@ -242,12 +242,12 @@ export default function BreathingExercise() {
         >
           {voiceEnabled ? (
             <>
-              <Volume2 className="h-3.5 w-3.5" />
+              <Volume2 className="h-3.5 w-3.5" aria-label="volume on" />
               <span>Voice Live</span>
             </>
           ) : (
             <>
-              <VolumeX className="h-3.5 w-3.5" />
+              <VolumeX className="h-3.5 w-3.5" aria-label="volume off" />
               <span>Voice Off</span>
             </>
           )}
@@ -293,7 +293,7 @@ export default function BreathingExercise() {
           title="Reset session"
           aria-label="Reset breathing session"
         >
-          <RotateCcw className="h-4.5 w-4.5" />
+          <RotateCcw className="h-4.5 w-4.5" aria-hidden="true" />
         </button>
         <button
           onClick={handleStartPause}
@@ -304,7 +304,7 @@ export default function BreathingExercise() {
           }`}
           aria-label={isActive ? 'Pause breathing exercise' : 'Start breathing exercise'}
         >
-          {isActive ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 fill-current ml-0.5" />}
+          {isActive ? <Pause className="h-6 w-6" aria-hidden="true" /> : <Play className="h-6 w-6 fill-current ml-0.5" aria-hidden="true" />}
         </button>
       </div>
     </div>

@@ -152,7 +152,7 @@ export default function PomodoroTimer() {
 
       {/* Stats and buttons */}
       <div className="flex items-center gap-1.5 text-xs text-[#7ec8a4] mt-2 mb-6">
-        <Award className="h-4 w-4" />
+        <Award className="h-4 w-4" aria-hidden="true" />
         <span>Sessions Completed today: <b>{completedSessions}</b></span>
       </div>
 
@@ -174,7 +174,7 @@ export default function PomodoroTimer() {
           }`}
           aria-label={isActive ? 'Pause study timer' : 'Start study timer'}
         >
-          {isActive ? <Pause className="h-5.5 w-5.5" /> : <Play className="h-5.5 w-5.5 fill-current ml-0.5" />}
+          {isActive ? <Pause className="h-5.5 w-5.5" aria-hidden="true" /> : <Play className="h-5.5 w-5.5 fill-current ml-0.5" aria-hidden="true" />}
         </button>
       </div>
     </div>

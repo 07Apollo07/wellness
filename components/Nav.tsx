@@ -38,7 +38,7 @@ export default function Nav() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 group">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-[#7ec8a4] to-[#b8a9d9] shadow-lg shadow-[#7ec8a4]/10 transition-transform group-hover:scale-105">
-            <Brain className="h-5.5 w-5.5 text-[#0a0f1e]" />
+            <Brain className="h-5.5 w-5.5 text-[#0a0f1e]" aria-label="Serenity logo" />
           </div>
           <span className="serif-display text-xl font-bold tracking-wide text-white transition-colors group-hover:text-[#7ec8a4]">
             Serenity
@@ -61,7 +61,7 @@ export default function Nav() {
                       : 'text-slate-400 hover:text-white hover:bg-white/5'
                   }`}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-4 w-4" aria-hidden="true" />
                   {link.label}
                 </Link>
               );
@@ -74,7 +74,7 @@ export default function Nav() {
           {profile ? (
             <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-white/5 bg-white/5">
               <div className="flex h-6.5 w-6.5 items-center justify-center rounded-full bg-[#b8a9d9]/20">
-                <User className="h-3.5 w-3.5 text-[#b8a9d9]" />
+                <User className="h-3.5 w-3.5 text-[#b8a9d9]" aria-label="User profile" />
               </div>
               <div className="text-left hidden sm:block">
                 <p className="text-xs font-semibold leading-none text-slate-200">{profile.name}</p>

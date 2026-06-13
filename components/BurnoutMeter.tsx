@@ -45,7 +45,7 @@ export default function BurnoutMeter({ score, risk }: BurnoutMeterProps) {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/10 text-red-400">
-            <Activity className="h-5 w-5" />
+            <Activity className="h-5 w-5" aria-hidden="true" />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Burnout Meter</h3>

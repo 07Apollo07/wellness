@@ -62,7 +62,7 @@ export default function ExamCountdown({ profile }: ExamCountdownProps) {
 
       <div className="flex items-center gap-3.5 mb-4">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#f5a623]/10 text-[#f5a623]">
-          <Calendar className="h-5 w-5" />
+          <Calendar className="h-5 w-5" aria-hidden="true" />
         </div>
         <div>
           <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Exam Countdown</h3>
@@ -86,7 +86,7 @@ export default function ExamCountdown({ profile }: ExamCountdownProps) {
       </div>
 
       <div className="flex items-start gap-3 mt-4 border-t border-white/5 pt-4">
-        <Trophy className="h-5 w-5 text-[#f5a623] shrink-0 mt-0.5" />
+        <Trophy className="h-5 w-5 text-[#f5a623] shrink-0 mt-0.5" aria-hidden="true" />
         <div>
           <p className="text-xs italic text-slate-300 leading-relaxed">
             &ldquo;{quote}&rdquo;

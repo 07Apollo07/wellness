@@ -178,7 +178,39 @@ export async function analyzeJournalEntry(
   }
 }
 
-// Generate Chat Response from Serenity AI (supports gemini-3.5-live and Multimodal image attachments)
+// Keyword-routing mock chat response — exported so tests can call it directly
+// without triggering a real API call even when an API key is present.
+export async function simulateChatResponse(
+  message: string,
+  profile: StudentProfile,
+  image?: { data: string; mimeType: string }
+): Promise<string> {
+  await delay(50); // minimal delay in test mode
+  const msgLower = message.toLowerCase();
+  const exam = profile.examType.toUpperCase();
+
+  if (image) {
+    return `[SIMULATION Mode: Analyzed attached ${image.mimeType} image] I see the details in this document, ${profile.name}. It looks like there's a heavy academic workload or mock test scores sheet. Don't let these single numbers define your self-worth. Let's break down this revision checklist topic-by-topic.`;
+  }
+  if (msgLower.includes('hello') || msgLower.includes('hi') || msgLower.includes('hey')) {
+    return `Hello ${profile.name}! I'm Serenity. How are you holding up today with your ${exam} preparation? Remember, you're more than just a roll number or percentile. What's on your mind?`;
+  }
+  if (msgLower.includes('stress') || msgLower.includes('anxious') || msgLower.includes('scared') || msgLower.includes('worry')) {
+    return `It is completely natural to feel overwhelmed, ${profile.name}. The competition for ${exam} is intense, and that weight can feel heavy. Let's focus only on what we can control today. Have you tried dividing your syllabus backlogs into micro-topics of 30 minutes each? Let's take a slow breath.`;
+  }
+  if (msgLower.includes('backlog') || msgLower.includes('syllabus') || msgLower.includes('study') || msgLower.includes('revision')) {
+    return `Backlogs are the number one source of stress for ${exam} aspirants. Try setting aside just one 'Revision Hour' early in the morning before starting your daily schedule. This prevents backlog anxiety from consuming your entire day. Which topic is giving you trouble right now?`;
+  }
+  if (msgLower.includes('sleep') || msgLower.includes('tired') || msgLower.includes('exhausted')) {
+    return `Sleep is non-negotiable for memory consolidation, ${profile.name}. Even a short 20-minute nap can restore cognitive clarity better than another hour of exhausted reading. Tonight, aim to wind down 30 minutes before bed — your ${exam} prep will thank you for it.`;
+  }
+  if (msgLower.includes('mock') || msgLower.includes('test') || msgLower.includes('score') || msgLower.includes('result')) {
+    return `One mock score is a data point, not your destiny, ${profile.name}. Review where marks were lost, pick the top two weak areas, and dedicate focused time to those this week. Consistent small improvements compound into ${exam} readiness.`;
+  }
+  return `I hear you, ${profile.name}. Preparing for ${exam} is as much a mental marathon as an academic one. Be proud of the effort you've put in today. How about we design a micro-schedule or run through a quick 2-minute grounding exercise to clear your head?`;
+}
+
+// Generate Chat Response from Serenity AI (supports Multimodal image attachments)
 export async function getChatResponse(
   message: string,
   history: { role: 'user' | 'model'; content: string }[],
@@ -189,25 +221,9 @@ export async function getChatResponse(
   const genAI = getGeminiClient();
 
   if (!genAI) {
-    // Simulated friendly chatbot responses
-    await delay(1000);
-    const msgLower = message.toLowerCase();
-    const exam = profile.examType.toUpperCase();
-
-    if (image) {
-      return `[SIMULATION Mode: Analyzed attached ${image.mimeType} image] I see the details in this document, ${profile.name}. It looks like there's a heavy academic workload or mock test scores sheet. Don't let these single numbers define your self-worth. Let's break down this revision checklist topic-by-topic.`;
-    }
-    if (msgLower.includes('hello') || msgLower.includes('hi') || msgLower.includes('hey')) {
-      return `Hello ${profile.name}! I'm Serenity. How are you holding up today with your ${exam} preparation? Remember, you're more than just a roll number or percentile. What's on your mind?`;
-    }
-    if (msgLower.includes('stress') || msgLower.includes('anxious') || msgLower.includes('scared') || msgLower.includes('worry')) {
-      return `It is completely natural to feel overwhelmed, ${profile.name}. The competition for ${exam} is intense, and that weight can feel heavy. Let's focus only on what we can control today. Have you tried dividing your syllabus backlogs into micro-topics of 30 minutes each? Let's take a slow breath.`;
-    }
-    if (msgLower.includes('backlog') || msgLower.includes(' syllabus') || msgLower.includes('study') || msgLower.includes('revision')) {
-      return `Backlogs are the number one source of stress for ${exam} aspirants. Try setting aside just one 'Revision Hour' early in the morning before starting your daily schedule. This prevents backlog anxiety from consuming your entire day. Which topic is giving you trouble right now?`;
-    }
-
-    return `I hear you, ${profile.name}. Preparing for ${exam} is as much a mental marathon as an academic one. Be proud of the effort you've put in today. How about we design a micro-schedule or run through a quick 2-minute grounding exercise to clear your head?`;
+    // Delegate to the standalone mock function (1 s delay for realistic feel)
+    await delay(950);
+    return simulateChatResponse(message, profile, image);
   }
 
   try {

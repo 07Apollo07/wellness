@@ -37,7 +37,7 @@ export default function MoodChart({ data }: MoodChartProps) {
       <div>
         <div className="flex items-center gap-3 mb-1">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#7ec8a4]/10 text-[#7ec8a4]">
-            <Activity className="h-5 w-5" />
+            <Activity className="h-5 w-5" aria-hidden="true" />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Mood & Stress Trends</h3>

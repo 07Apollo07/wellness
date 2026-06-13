@@ -46,6 +46,36 @@
 | **Charts** | Recharts | Interactive wellness timelines |
 | **Persistence** | localStorage (Safe Wrappers) | Zero database setup, private local logs |
 
+## 🎯 Problem Statement Alignment
+
+Serenity was built **explicitly** to meet the *Mental Wellness Tracker* challenge:
+
+| Challenge Requirement | Serenity Implementation |
+|-----------------------|--------------------------|
+| Open‑ended daily journaling | **Daily Reflections & Mood Log** – free‑form text area with timestamps. |
+| AI analysis of journal & mood data | **Multimodal Study‑Log Analysis** API (`/api/analyze`) sends the content to Gemini, extracting hidden stress triggers and emotional patterns. |
+| Hyper‑personalized coping strategies | **Companion Chat** uses the analysis results to suggest real‑time breathing exercises, study‑plan tweaks, and motivational messages. |
+| Adaptive mindfulness exercises | **Voice Guided Mindfulness** automatically changes breathing cycles and plays calming audio based on AI‑detected stress level. |
+| Continuous empathetic digital companion | Chat interface is always accessible, preserving conversation context across sessions. |
+
+These mappings show that Serenity not only **monitors** mental well‑being but also **actively improves** it, directly aligning with the problem statement.
+
+## 🔐 Safety & Privacy
+
+* All journal entries, mood logs, and temporary Pomodoro logs are stored **only in the browser’s `localStorage`** unless a user opts into a backend integration.
+* The only external request is to the **Gemini API**, which receives only the raw text needed for analysis – no personal identifiers or location data are transmitted.
+* A disclaimer is displayed on the **Companion Chat** page stating that AI‑generated advice is **not a substitute for professional mental‑health care**.
+* Users can clear all stored data via the Settings page, which removes every key under `localStorage` related to Serenity.
+
+## 📈 Future Roadmap (Further Alignment Enhancements)
+
+* **Weekly Summary Reports** – aggregate AI insights over the past 7 days, showing stress trends, top triggers, and progress metrics.
+* **Stress‑Trigger Extraction UI** – visualise the most frequent anxiety‑related keywords identified by Gemini.
+* **Multi‑Exam Profiles** – allow students to select their target exam (JEE, NEET, etc.) so prompts can be tuned to exam‑specific pressures.
+* **Export / Import** – enable encrypted JSON export of journal data for backup or sharing with counselors.
+
+These upcoming features will deepen Serenity’s ability to provide **long‑term monitoring** and **actionable, personalized support**, further strengthening alignment with the challenge.
+
 ---
 
 ## 🚀 Getting Started
